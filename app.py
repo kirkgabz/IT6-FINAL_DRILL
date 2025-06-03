@@ -9,10 +9,28 @@ print("Current working directory:", os.getcwd())
 print("Files in current directory:", os.listdir())
 
 app = Flask(__name__)
-swagger = Swagger(app)
+
+# Swagger configuration to explicitly include all routes
+swagger_config = {
+    "headers": [],
+    "specs": [
+        {
+            "endpoint": 'apispec_1',
+            "route": '/apispec_1.json',
+            "rule_filter": lambda rule: True,  # include all endpoints
+            "model_filter": lambda tag: True,  # include all models
+        }
+    ],
+    "static_url_path": "/flasgger_static",
+    "swagger_ui": True,
+    "specs_route": "/apidocs/"
+}
+
+swagger = Swagger(app, config=swagger_config)
 
 # Load your trained model
 model = joblib.load('airquality.joblib')
+print("Loaded model type:", type(model))
 
 # OpenWeather API Key
 API_KEY = 'Enter Your API Key'
@@ -129,7 +147,7 @@ def validate_aqi_data(data):
             return False
     return True
 
-# ========== REST API CRUD Endpoints ==========
+# ========== REST API CRUD Endpoints with Swagger Specs ==========
 
 @app.route('/api/records', methods=['GET'])
 def get_records():
@@ -138,7 +156,35 @@ def get_records():
     ---
     responses:
       200:
-        description: List of AQI records
+        description: A list of all AQI records
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "123e4567-e89b-12d3-a456-426614174000"
+                  pm25:
+                    type: number
+                    example: 12.5
+                  pm10:
+                    type: number
+                    example: 20.1
+                  o3:
+                    type: number
+                    example: 0.03
+                  no2:
+                    type: number
+                    example: 0.01
+                  co:
+                    type: number
+                    example: 0.4
+                  so2:
+                    type: number
+                    example: 0.005
     """
     return jsonify(list(aqi_records.values()))
 
@@ -147,33 +193,61 @@ def create_record():
     """
     Create a new AQI record
     ---
-    parameters:
-      - in: body
-        name: body
-        schema:
-          required:
-            - pm25
-            - pm10
-            - o3
-            - no2
-            - co
-            - so2
-          properties:
-            pm25:
-              type: number
-            pm10:
-              type: number
-            o3:
-              type: number
-            no2:
-              type: number
-            co:
-              type: number
-            so2:
-              type: number
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [pm25, pm10, o3, no2, co, so2]
+            properties:
+              pm25:
+                type: number
+                example: 12.5
+              pm10:
+                type: number
+                example: 20.1
+              o3:
+                type: number
+                example: 0.03
+              no2:
+                type: number
+                example: 0.01
+              co:
+                type: number
+                example: 0.4
+              so2:
+                type: number
+                example: 0.005
     responses:
       201:
-        description: Created record
+        description: AQI record created successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                pm25:
+                  type: number
+                  example: 12.5
+                pm10:
+                  type: number
+                  example: 20.1
+                o3:
+                  type: number
+                  example: 0.03
+                no2:
+                  type: number
+                  example: 0.01
+                co:
+                  type: number
+                  example: 0.4
+                so2:
+                  type: number
+                  example: 0.005
       400:
         description: Invalid input data
     """
@@ -187,16 +261,44 @@ def create_record():
 @app.route('/api/records/<record_id>', methods=['GET'])
 def get_record(record_id):
     """
-    Get a single AQI record by ID
+    Get a specific AQI record by ID
     ---
     parameters:
       - in: path
         name: record_id
+        schema:
+          type: string
         required: true
-        type: string
+        description: The ID of the AQI record
     responses:
       200:
-        description: Record found
+        description: AQI record found
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                pm25:
+                  type: number
+                  example: 12.5
+                pm10:
+                  type: number
+                  example: 20.1
+                o3:
+                  type: number
+                  example: 0.03
+                no2:
+                  type: number
+                  example: 0.01
+                co:
+                  type: number
+                  example: 0.4
+                so2:
+                  type: number
+                  example: 0.005
       404:
         description: Record not found
     """
@@ -207,32 +309,70 @@ def get_record(record_id):
 @app.route('/api/records/<record_id>', methods=['PUT'])
 def update_record(record_id):
     """
-    Update an existing AQI record
+    Update an existing AQI record by ID
     ---
     parameters:
       - in: path
         name: record_id
-        required: true
-        type: string
-      - in: body
-        name: body
         schema:
-          properties:
-            pm25:
-              type: number
-            pm10:
-              type: number
-            o3:
-              type: number
-            no2:
-              type: number
-            co:
-              type: number
-            so2:
-              type: number
+          type: string
+        required: true
+        description: The ID of the AQI record
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [pm25, pm10, o3, no2, co, so2]
+            properties:
+              pm25:
+                type: number
+                example: 12.5
+              pm10:
+                type: number
+                example: 20.1
+              o3:
+                type: number
+                example: 0.03
+              no2:
+                type: number
+                example: 0.01
+              co:
+                type: number
+                example: 0.4
+              so2:
+                type: number
+                example: 0.005
     responses:
       200:
-        description: Updated record
+        description: AQI record updated successfully
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                pm25:
+                  type: number
+                  example: 12.5
+                pm10:
+                  type: number
+                  example: 20.1
+                o3:
+                  type: number
+                  example: 0.03
+                no2:
+                  type: number
+                  example: 0.01
+                co:
+                  type: number
+                  example: 0.4
+                so2:
+                  type: number
+                  example: 0.005
       400:
         description: Invalid input data
       404:
@@ -249,16 +389,18 @@ def update_record(record_id):
 @app.route('/api/records/<record_id>', methods=['DELETE'])
 def delete_record(record_id):
     """
-    Delete an AQI record
+    Delete an AQI record by ID
     ---
     parameters:
       - in: path
         name: record_id
+        schema:
+          type: string
         required: true
-        type: string
+        description: The ID of the AQI record to delete
     responses:
       204:
-        description: No content
+        description: Record deleted successfully
       404:
         description: Record not found
     """
@@ -267,10 +409,15 @@ def delete_record(record_id):
     del aqi_records[record_id]
     return '', 204
 
-# ========== Testing Helper Endpoint (Optional) ==========
-# Use this to reset records during testing for clean state
 @app.route('/api/records/reset', methods=['POST'])
 def reset_records():
+    """
+    Reset (clear) all AQI records
+    ---
+    responses:
+      204:
+        description: All records cleared successfully
+    """
     aqi_records.clear()
     return '', 204
 
